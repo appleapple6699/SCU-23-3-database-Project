@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>组员页面</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div id="status">未登录</div>
+        <button onclick="logout()">退出登录</button>
+      </div>
+      <h1>组员页面</h1>
+      <section>
+        <h2>查看任务</h2>
+        <button onclick="listTasks()">刷新任务</button>
+        <pre id="tasks-result"></pre>
+      </section>
+      <section>
+        <h2>提交条目</h2>
+        <input id="entry-task" placeholder="TaskID" />
+        <input id="entry-user" placeholder="SubmitterID" />
+        <input id="entry-summary" placeholder="概述" />
+        <input id="entry-content" placeholder="内容" />
+        <button onclick="createEntry()">提交</button>
+        <pre id="entry-result"></pre>
+      </section>
+      <section>
+        <h2>审核条目</h2>
+        <input id="audit-entry" placeholder="EntryID" />
+        <input id="audit-user" placeholder="AuditorID" />
+        <select id="audit-result"><option value="1">通过</option><option value="0">不通过</option></select>
+        <input id="audit-desc" placeholder="说明" />
+        <button onclick="createAuditEntry()">审核</button>
+        <pre id="audit-result-pre"></pre>
+      </section>
+      <section>
+        <h2>确认通知</h2>
+        <input id="confirm-notification" placeholder="NotificationID" />
+        <input id="confirm-user" placeholder="UserID" />
+        <button onclick="confirmNotification()">确认</button>
+        <pre id="confirm-result"></pre>
+      </section>
+    </div>
+    <script src="/app.js"></script>
+    <script>
+      async function listTasks(){ const d=await api.request('/api/tasks'); document.getElementById('tasks-result').textContent = JSON.stringify(d,null,2); }
+      async function createEntry(){ const taskId=parseInt(document.getElementById('entry-task').value,10)||0; const submitterId=parseInt(document.getElementById('entry-user').value,10)||0; const summary=document.getElementById('entry-summary').value; const content=document.getElementById('entry-content').value; const d=await api.request('/api/entries', 'POST', { taskId, submitterId, summary, content }); document.getElementById('entry-result').textContent = JSON.stringify(d,null,2); }
+      async function createAuditEntry(){ const entryId=parseInt(document.getElementById('audit-entry').value,10)||0; const auditorId=parseInt(document.getElementById('audit-user').value,10)||0; const auditResult=parseInt(document.getElementById('audit-result').value,10)||0; const description=document.getElementById('audit-desc').value; const d=await api.request('/api/auditentries', 'POST', { entryId, auditorId, auditResult, description }); document.getElementById('audit-result-pre').textContent = JSON.stringify(d,null,2); }
+      async function confirmNotification(){ const notificationId=parseInt(document.getElementById('confirm-notification').value,10)||0; const userId=parseInt(document.getElementById('confirm-user').value,10)||0; const d=await api.request('/api/notificationconfirmations', 'POST', { notificationId, userId }); document.getElementById('confirm-result').textContent = JSON.stringify(d,null,2); }
+    </script>
+  </body>
+  </html>

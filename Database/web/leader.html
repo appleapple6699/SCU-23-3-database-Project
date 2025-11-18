@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>组长面板</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div id="status">未登录</div>
+        <button onclick="logout()">退出登录</button>
+      </div>
+      <h1>组长面板</h1>
+      <section>
+        <h2>待审核申请</h2>
+        <input id="apps-group-id" placeholder="GroupID" />
+        <button onclick="listApplications()">刷新申请</button>
+        <pre id="apps-result"></pre>
+        <h3>审核操作</h3>
+        <input id="apps-user-id" placeholder="UserID" />
+        <input id="apps-group-id2" placeholder="GroupID" />
+        <select id="apps-action"><option value="1">通过</option><option value="2">拒绝</option></select>
+        <button onclick="updateApplication()">提交审核</button>
+      </section>
+      <section>
+        <h2>发布组内通知</h2>
+        <input id="grp-publisher" placeholder="PublisherID" />
+        <input id="grp-group" placeholder="GroupID" />
+        <input id="grp-title" placeholder="标题" />
+        <input id="grp-content" placeholder="内容" />
+        <button onclick="publishGroupNotification()">发布</button>
+        <pre id="grp-result"></pre>
+      </section>
+      <section>
+        <h2>权限转让</h2>
+        <input id="transfer-group" placeholder="GroupID" />
+        <input id="transfer-from" placeholder="原组长UserID" />
+        <input id="transfer-to" placeholder="新组长UserID" />
+        <button onclick="transferLeader()">转让</button>
+        <pre id="transfer-result"></pre>
+      </section>
+      <section>
+        <h2>活跃度统计</h2>
+        <input id="stats-group" placeholder="GroupID" />
+        <button onclick="groupStats()">查看</button>
+        <pre id="stats-result"></pre>
+      </section>
+    </div>
+    <script src="/app.js"></script>
+    <script>
+      async function listApplications(){ const id=parseInt(document.getElementById('apps-group-id').value,10)||0; const d=await api.request(`/api/usergroups/applications?groupId=${id}`); document.getElementById('apps-result').textContent = JSON.stringify(d,null,2); }
+      async function updateApplication(){ const userId=parseInt(document.getElementById('apps-user-id').value,10)||0; const groupId=parseInt(document.getElementById('apps-group-id2').value,10)||0; const action=parseInt(document.getElementById('apps-action').value,10)||1; const d=await api.request('/api/usergroups/update', 'PATCH', { userId, groupId, action }); document.getElementById('apps-result').textContent = JSON.stringify(d,null,2); }
+      async function publishGroupNotification(){ const publisherId=parseInt(document.getElementById('grp-publisher').value,10)||0; const groupId=parseInt(document.getElementById('grp-group').value,10)||0; const title=document.getElementById('grp-title').value; const content=document.getElementById('grp-content').value; const d=await api.request('/api/notifications', 'POST', { publisherId, groupId, title, content }); document.getElementById('grp-result').textContent = JSON.stringify(d,null,2); }
+      async function transferLeader(){ const groupId=parseInt(document.getElementById('transfer-group').value,10)||0; const fromUserId=parseInt(document.getElementById('transfer-from').value,10)||0; const toUserId=parseInt(document.getElementById('transfer-to').value,10)||0; const d=await api.request(`/api/groups/${groupId}/transfer`, 'POST', { fromUserId, toUserId }); document.getElementById('transfer-result').textContent = JSON.stringify(d,null,2); }
+      async function groupStats(){ const groupId=parseInt(document.getElementById('stats-group').value,10)||0; const d=await api.request(`/api/groups/${groupId}/stats`); document.getElementById('stats-result').textContent = JSON.stringify(d,null,2); }
+    </script>
+  </body>
+  </html>

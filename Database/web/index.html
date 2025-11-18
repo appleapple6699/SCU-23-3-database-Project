@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Database Demo</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div id="status">未登录</div>
+        <button onclick="logout()">退出登录</button>
+      </div>
+      <h1>Database 系统演示</h1>
+      <section>
+        <h2>注册</h2>
+        <input id="reg-nickname" placeholder="昵称" />
+        <input id="reg-phone" placeholder="手机号" />
+        <input id="reg-password" placeholder="密码" type="password" />
+        <button onclick="register()">注册</button>
+        <pre id="reg-result"></pre>
+      </section>
+      <section>
+        <h2>登录</h2>
+        <input id="login-phone" placeholder="手机号或UserID" />
+        <input id="login-password" placeholder="密码" type="password" />
+        <button onclick="login()">登录</button>
+        <pre id="login-result"></pre>
+      </section>
+      <section>
+        <h2>创建组</h2>
+        <input id="group-name" placeholder="组名" />
+        <input id="group-desc" placeholder="描述" />
+        <input id="group-creator" placeholder="创建者UserID" />
+        <button onclick="createGroup()">创建组</button>
+        <button onclick="listGroups()">查看组列表</button>
+        <pre id="group-result"></pre>
+      </section>
+      <section>
+        <h2>任务</h2>
+        <input id="task-group" placeholder="GroupID" />
+        <input id="task-pub" placeholder="PublisherID" />
+        <input id="task-title" placeholder="标题" />
+        <input id="task-content" placeholder="内容" />
+        <button onclick="createTask()">发布任务</button>
+        <button onclick="listTasks()">查看任务</button>
+        <pre id="task-result"></pre>
+      </section>
+      <section>
+        <h2>申请加入组</h2>
+        <input id="apply-user" placeholder="UserID" />
+        <input id="apply-group" placeholder="GroupID" />
+        <button onclick="applyUserGroup()">申请加入</button>
+        <pre id="apply-result"></pre>
+      </section>
+    </div>
+    <script src="/app.js"></script>
+  </body>
+  </html>

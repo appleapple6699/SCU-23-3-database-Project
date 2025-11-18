@@ -1,0 +1,31 @@
+[package]
+name = "database"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "database"
+path = "src/lib.rs"
+
+[[bin]]
+name = "demo"
+path = "cmd/demo/main.rs"
+
+[[bin]]
+name = "server"
+path = "cmd/server/main.rs"
+
+[dependencies]
+axum = "0.7"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sqlx = { version = "0.7", features = ["sqlite", "runtime-tokio-rustls"] }
+thiserror = "1"
+uuid = { version = "1", features = ["v4"] }
+bcrypt = "0.15"
+chrono = { version = "0.4", features = ["clock"] }
+tower-http = { version = "0.5", features = ["fs"] }
+[[]bin]
+name = "seed_admin"
+path = "cmd/seed_admin/main.rs"

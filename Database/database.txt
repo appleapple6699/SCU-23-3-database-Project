@@ -1,0 +1,313 @@
+一、软件架构
+　　1、表现层
+1️⃣ 通用界面模块
+界面名称	主要功能	关键操作
+注册/登录界面	用户注册、登录、身份验证	提交用户名+密码 → 调用后端验证接口
+主页 Dashboard	显示个人信息、所属组信息、任务与通知概览	拉取用户基本数据、通知列表
+搜索界面	搜索组、任务或成员	输入关键字→调用查询API→显示结果
+系统提示/错误界面	展示友好错误提示	捕获异常→展示错误信息
+2	管理员界面
+模块	功能	对应操作
+组审核界面	查看所有待审核组	调用 /groups?status=0 接口，执行通过/拒绝操作
+违规处理界面	查看违规条目、解散组	调用 /entries?auditStatus=3、/groups/disband
+系统通知界面	发布系统级通知	填写表单→POST /notifications
+用户管理界面	冻结/解冻账号	PATCH /users/{id}/freeze、PATCH /users/{id}/unfreeze
+3	组长界面
+模块	功能	对应操作
+任务管理界面	发布/修改/删除任务	表单输入→POST/PUT /tasks
+成员管理界面	审核加入申请、移除成员	调用 /usergroups/update
+组内通知界面	发布组内公告	POST /notifications
+数据统计界面	查看组内活跃度	GET /groups/{id}/stats
+权限转让界面	转让组长身份	调用事务接口 /groups/{id}/transfer
+4	组员界面
+模块	功能	对应操作
+任务浏览界面	查看任务详情	GET /tasks?groupID=...
+条目提交界面	上传成果	POST /entries
+条目审核界面	审核他人条目	POST /auditentries
+通知界面	查看并确认通知	POST /notificationconfirmations
+个人中心	退出组、修改信息	PATCH /users/{id}、POST /groups/leave
+　　
+　　2、业务层
+（1）用户管理逻辑
+　　1、注册用户：校验用户名是否重复 → bcrypt加密密码 → 调用持久层插入
+　　2、登录验证：验证密码正确性 → 生成会话/Token → 记录登录时间
+　　3、账号冻结/解冻：修改 IsActive 状态并更新 UnfreezeDateTime
+（2）组管理逻辑
+创建组：
+1、校验用户是否已有组
+2、插入 Groups 表记录（状态=待审核）
+3、触发管理员审核流程
+
+审核组（管理员）：
+1、更新组状态（0→1通过）或（0→2拒绝）
+
+成员加入组：
+1、插入 UserGroups 记录（Status=0）
+2、组长审核通过 → 更新 Status=1
+
+转让组长权限（事务操作）：
+BEGIN TRANSACTION
+1、更新原组长 GroupPermission=0
+2、更新新组长 GroupPermission=2
+COMMIT
+
+解散组：
+1、修改组状态=2
+2、所有关联用户 GroupID 置 NULL
+3、级联删除 Tasks、Entries、Notifications 等
+
+（3）任务协作逻辑
+发布任务：
+1、校验组长权限
+2、插入 Tasks 表
+3、通知组员
+
+提交条目：
+1、检查任务是否截止
+2、插入 Entries 表记录
+
+审核条目：
+1、校验审核人与提交人不同
+2、插入 AuditEntries 记录
+3、自动计算条目最终状态（多数投票等）
+
+计算审核结果：
+1、汇总同一 Entry 的所有 AuditEntries
+2、统计通过率 → 更新 Entries.AuditStatus
+
+（4）通知与确认逻辑
+
+发布通知：
+1、校验发布者权限
+2、插入 Notifications
+3、推送至对应组员
+
+确认通知：
+1、插入 NotificationConfirmations 记录
+2、更新通知确认率统计
+
+（5）数据分析逻辑（组长）
+
+1、统计任务完成率、条目审核率、通知确认率
+2、查询关联表（Tasks, Entries, AuditEntries, Notifications, NotificationConfirmations）
+3、可按时间、成员、任务维度统计
+
+三、持久层
+
+目标：
+使用参数化 SQL 防止注入
+封装 CRUD 接口（Create, Read, Update, Delete）
+保证事务完整性和外键约束
+
+模块	表名	典型 SQL 操作
+用户管理	Users	INSERT, UPDATE, SELECT（密码验证、冻结等）
+组管理	Groups, UserGroups	INSERT INTO Groups ..., UPDATE Groups SET Status=?
+任务管理	Tasks	INSERT, SELECT, UPDATE IsValid
+条目管理	Entries, AuditEntries	INSERT, UPDATE AuditStatus, 联合查询
+通知系统	Notifications, NotificationConfirmations	插入发布记录、统计确认数
+附件管理	Attachments	INSERT INTO Attachments, 按 OwnerType 查询
+活跃统计	多表联查	复杂统计 SQL（JOIN + GROUP BY）
+
+四、数据层
+包含主要表：
+
+Users
+Groups
+UserGroups
+Tasks
+Entries
+AuditEntries
+Notifications
+NotificationConfirmations
+Attachments
+
+2️⃣ 索引设计
+表	索引字段	用途
+Users	UserID, GroupID, IsActive	快速定位用户
+Groups	GroupID, Status	审核查询优化
+Tasks	GroupID, Deadline	任务查询加速
+Entries	TaskID, SubmitterID	快速统计条目
+Notifications	GroupID, PublishTime	通知查询排序
+AuditEntries	EntryID, AuditorID	审核结果统计
+
+3	数据安全与备份
+定期备份（每日全量+每小时增量）
+异地备份副本
+使用 bcrypt 加密用户密码
+数据恢复工具支持
+记录操作日志（审计表）
+
+4	性能优化
+
+热点查询缓存（Redis 或内存缓存）
+分表归档历史任务与条目
+限制单次查询结果条数（分页）
+采用事务批处理更新（减少锁竞争）
+
+二、模块之间的接口定义
+
+接口设计采用 RESTful 风格，通过统一的返回结构确保前后端数据交互的清晰性。
+1. 统一返回数据结构定义
+字段名	类型	说明	成功示例	失败示例
+error_code	INT	0 表示成功；>0 表示失败。	0	2002
+msg	STRING	结果描述信息，用于前端提示。	"登录成功"	"任务已截止，无法提交"
+data	OBJECT/ARRAY	成功时返回的业务数据体。	{ "UserID": 101, "Nickname": "张三" }	null
+
+2. 接口详细列表
+2.1. 通用认证与基础接口 
+模块	接口功能	接口地址 (URL)	方法	核心操作 / 关键逻辑
+认证	用户注册	POST /api/users/register	POST /json	密码加密存储。
+认证	用户登录	POST /api/users/login	POST /json	验证身份，返回 Token 及权限。
+用户	修改个人信息	PATCH /api/users/{id}	PATCH /json	修改昵称、密码等信息。
+组	创建组申请	POST /api/groups	POST /json	插入 Groups 表，同时在 UserGroups 表中添加一条 GroupPermission=2 (组长) 的记录。
+搜索	搜索组、任务、成员	GET /api/search	GET	根据关键字查询。
+
+2.2. 组员/通用组操作接口
+模块	接口功能	接口地址 (URL)	方法	核心操作 / 关键逻辑
+组	申请加入组	POST /api/usergroups/apply	POST /json	输入 GroupID。插入 UserGroups 记录，Status=0 (待审核) 。
+组	退出指定组	DELETE /api/usergroups/{groupId}/leave	DELETE	删除用户在指定 GroupID 下的 UserGroups 记录。
+任务	查看任务列表	GET /api/tasks	GET	根据用户所属的所有 GroupID 查询任务列表。
+条目	提交工作条目	POST /api/entries	POST /form	检查任务是否截止 (IsValid=1)。
+条目	审核他人条目	POST /api/auditentries	POST /json	校验审核人与提交人不同。
+通知	确认通知	POST /api/notificationconfirmations	POST /json	插入 NotificationConfirmations 记录。
+2.3组长接口
+
+模块	接口功能	接口地址 (URL)	方法	核心操作 / 关键逻辑
+任务	发布新任务	POST /api/tasks	POST /json	校验组长权限，插入 Tasks 表。
+任务	修改/删除任务	PUT/DELETE /api/tasks/{id}	PUT/DELETE	只能修改/删除自己作为组长/协组长的组的任务。
+成员	获取待审核申请	GET /api/usergroups/applications	GET	查询 UserGroups 表中 GroupID 匹配且 Status=0 的记录。
+成员	审核组员加入	PATCH /api/usergroups/update	PATCH /json	输入： UserID, GroupID, Action (1=通过/2=拒绝)。通过： UPDATE UserGroups SET Status = 1。
+成员	移除成员	DELETE /api/usergroups/{groupId}/member/{userId}	DELETE	删除指定成员在特定组的 UserGroups 记录。
+权限	转让组长身份	POST /api/groups/{id}/transfer	POST /json	事务操作：更新 UserGroups 表中新旧组员的 GroupPermission。
+通知	发布组内通知	POST /api/notifications	POST /json	插入 Notifications 表。
+统计	查看组内活跃度	GET /api/groups/{id}/stats	GET	多表联查统计数据。
+
+2.4 网站管理员接口
+模块	接口功能	接口地址 (URL)	方法	核心操作 / 关键逻辑
+认证	管理员登录	POST /api/admin/login	POST /json	使用管理员专属账号密码登录，返回管理员专用的 Token。
+组审核	查看待审核组	GET /api/groups	GET	查询 Groups 表中 Status = 0 的记录。
+组审核	执行组审核	PATCH /api/groups/{id}/status	PATCH /json	更新 Groups.Status。
+用户	冻结/解冻账号	PATCH /api/users/{id}/freeze	PATCH /json	修改 IsActive 状态。
+违规	解散违规组	DELETE /api/groups/{id}/disband	DELETE	更新组状态=2，并删除/修改所有关联的 UserGroups 记录。
+通知	发布系统通知	POST /api/notifications	POST /json	插入 Notifications 表，GroupID = 0。
+
+
+三、数据库设计
+
+前面第一篇里面有的内容就省略了。
+（1）数据库表总览
+表名	核心字段	主键 / 外键	设计说明与约束
+Users	UserID, Password, Nickname, GroupID, GroupPermission, IsActive	主键：UserID
+外键：GroupID → Groups(GroupID)	存储用户基本信息、组归属与账号状态；约束：一个用户只能属于一个组
+Groups	GroupID, GroupName, Description, Status, CreatedTime, CreatedByUserID	主键：GroupID
+外键：CreatedByUserID → Users(UserID)	存储团队信息及创建者；状态0=待审核,1=已通过,2=已解散
+UserGroups	UserGroupID, UserID, GroupID, GroupPermission, Status	主键：UserGroupID
+外键：UserID → Users(UserID), GroupID → Groups(GroupID)	解决多对多关系；记录用户在组内的权限与状态
+Tasks	TaskID, GroupID, PublisherID, Title, Deadline, IsValid	主键：TaskID
+外键：GroupID → Groups(GroupID), PublisherID → Users(UserID)	存储组内任务信息，截止后不可提交新条目
+Entries	EntryID, TaskID, SubmitterID, Summary, Content, AuditStatus	主键：EntryID
+外键：TaskID → Tasks(TaskID), SubmitterID → Users(UserID)	任务条目表；审核状态动态更新
+AuditEntries	AuditEntryID, EntryID, AuditorID, AuditResult, Description	主键：AuditEntryID
+外键：EntryID → Entries(EntryID), AuditorID → Users(UserID)	存储条目的审核记录，不能审核自己提交的条目
+Notifications	NotificationID, PublisherID, GroupID, Title, Content, IsPinned	主键：NotificationID
+外键：PublisherID → Users(UserID), GroupID → Groups(GroupID)	存储系统或组内通知，GroupID=0 表示系统通知
+NotificationConfirmations	ConfirmationID, NotificationID, UserID, ConfirmTime	主键：ConfirmationID
+外键：NotificationID → Notifications(NotificationID), UserID → Users(UserID)	记录用户确认通知的行为
+Attachments	AttachmentID, GroupID, OwnerType, OwnerID, UploaderID, UploadTime	主键：AttachmentID
+外键：GroupID → Groups(GroupID), UploaderID → Users(UserID)	存储上传附件信息；OwnerType限定4类
+AuditLogs (可选加分项)	LogID, UserID, Action, TableName, ActionTime	主键：LogID
+外键：UserID → Users(UserID)	审计日志，用于追踪关键操作
+（2）详细数据字典
+
+1. Users 表 — 用户信息表
+字段名	数据类型	长度	默认值	键	说明	约束与业务规则
+UserID（手机号的一个映射）	INT	11	AUTO_INCREMENT	PK	用户唯一标识	主键，自增
+Password	VARCHAR	255	NULL		加密后的用户密码	必填，使用 bcrypt 算法加密
+Nickname	VARCHAR	50	NULL		用户昵称	非空
+GroupID	INT	11	NULL	FK	当前所属组ID	外键 → Groups(GroupID)；一个用户只能属于一个组
+GroupPermission	TINYINT	1	0		组内权限等级（0组员，1协助组长，2组长）	CHECK(GroupPermission IN (0,1,2))
+IsActive	TINYINT	1	1		账号是否冻结（0=冻结，1=正常）	CHECK(IsActive IN(0,1))
+UnfreezeDateTime	DATETIME		NULL		自动解冻时间	可空，冻结时设置
+CreatedAt	DATETIME		CURRENT_TIMESTAMP		创建时间	自动生成
+
+2. Groups 表 — 工作组信息表
+字段名	数据类型	长度	默认值	键	说明	约束与业务规则
+GroupID	INT	11	AUTO_INCREMENT	PK	组唯一标识符	主键
+GroupName	VARCHAR	100	NULL		工作组名称	非空，唯一约束
+Description	TEXT		NULL		组简介	可空
+Status	TINYINT	1	0		组状态（0待审，1通过，2解散）	CHECK(Status IN (0,1,2))
+CreatedTime	DATETIME		CURRENT_TIMESTAMP		创建时间	自动生成
+CreatedByUserID	INT	11	NULL	FK	创建者用户ID	外键 → Users(UserID)，初始组长
+
+3. UserGroups 表 — 用户与组关联表
+字段名	数据类型	长度	默认值	键	说明	约束与业务规则
+UserGroupID	INT	11	AUTO_INCREMENT	PK	唯一标识	主键
+UserID	INT	11		FK	用户ID	外键 → Users(UserID)
+GroupID	INT	11		FK	组ID	外键 → Groups(GroupID)
+GroupPermission	TINYINT	1	0		用户在组内权限等级	CHECK(GroupPermission IN (0,1,2))
+JoinTime	DATETIME		CURRENT_TIMESTAMP		加入时间	自动生成
+Status	TINYINT	1	0		状态（0待审核，1已加入，2已退出）	CHECK(Status IN (0,1,2))
+
+4. Tasks 表 — 任务表
+字段名	数据类型	长度	默认值	键	说明	约束与业务规则
+TaskID	INT	11	AUTO_INCREMENT	PK	任务唯一标识符	主键
+GroupID	INT	11		FK	所属组ID	外键 → Groups(GroupID)
+PublisherID	INT	11		FK	发布任务的用户	外键 → Users(UserID)
+Title	VARCHAR	100	NULL		任务标题	非空
+Content	TEXT		NULL		任务详情	可空
+PublishTime	DATETIME		CURRENT_TIMESTAMP		发布时间	自动生成
+Deadline	DATETIME		NULL		截止时间	不能早于 PublishTime
+IsValid	TINYINT	1	1		是否可提交	CHECK(IsValid IN (0,1))
+
+5. Entries 表 — 条目提交表
+字段名	数据类型	长度	默认值	键	说明	约束与业务规则
+EntryID	INT	11	AUTO_INCREMENT	PK	条目唯一标识	主键
+TaskID	INT	11		FK	所属任务	外键 → Tasks(TaskID)
+SubmitterID	INT	11		FK	提交用户	外键 → Users(UserID)
+Summary	VARCHAR	255	NULL		条目概述	非空
+Content	TEXT		NULL		条目详细内容	可空
+SubmitTime	DATETIME		CURRENT_TIMESTAMP		提交时间	自动生成
+AuditStatus	TINYINT	1	0		审核状态（0待定，1通过，2不通过，3争议）	动态计算；CHECK(AuditStatus IN (0,1,2,3))
+
+6、AuditEntries
+字段名	数据类型	长度	默认值	键	说明	约束与业务规则
+AuditEntryID	INT	11	AUTO_INCREMENT	PK	审核唯一标识	主键
+EntryID	INT	11		FK	被审核条目	外键 → Entries(EntryID)
+AuditorID	INT	11		FK	审核用户	外键 → Users(UserID)；不能与 SubmitterID 相同
+AuditTime	DATETIME		CURRENT_TIMESTAMP		审核时间	自动生成
+AuditResult	TINYINT	1			审核结果	CHECK(AuditResult IN (0,1))
+Description	TEXT		NULL		审核说明	可空
+
+7、Notifications
+字段名	数据类型	长度	默认值	键	说明	约束与业务规则
+NotificationID	INT	11	AUTO_INCREMENT	PK	通知唯一标识	主键
+PublisherID	INT	11		FK	发布用户ID	外键 → Users(UserID)
+GroupID	INT	11	0	FK	所属组ID（0=系统）	外键 → Groups(GroupID)
+PublishTime	DATETIME		CURRENT_TIMESTAMP		发布时间	自动生成
+Title	VARCHAR	100	NULL		通知标题	非空
+Content	TEXT		NULL		通知内容	可空
+IsPinned	TINYINT	1	0		是否置顶	CHECK(IsPinned IN (0,1))
+
+8、NotificationConfirmations
+字段名	数据类型	长度	默认值	键	说明	约束与业务规则
+ConfirmationID	INT	11	AUTO_INCREMENT	PK	唯一标识	主键
+NotificationID	INT	11		FK	被确认通知	外键 → Notifications(NotificationID)
+UserID	INT	11		FK	确认用户	外键 → Users(UserID)
+ConfirmTime	DATETIME		CURRENT_TIMESTAMP		确认时间	自动生成
+
+9、Attachments
+字段名	数据类型	长度	默认值	键	说明	约束与业务规则
+AttachmentID	INT	11	AUTO_INCREMENT	PK	附件唯一标识	主键
+GroupID	INT	11		FK	所属组	外键 → Groups(GroupID)
+OwnerType	ENUM	('Notification','Task','Entry','AuditEntry')			从属类型	限定类型枚举
+OwnerID	INT	11			所属实体ID	与 OwnerType 对应
+UploaderID	INT	11		FK	上传者ID	外键 → Users(UserID)
+UploadTime	DATETIME		CURRENT_TIMESTAMP		上传时间	自动生成
+
+10、AuditLogs（操作审计日志表，可选）
+字段名	数据类型	长度	默认值	键	说明	约束与业务规则
+LogID	INT	11	AUTO_INCREMENT	PK	日志唯一标识	主键
+UserID	INT	11		FK	执行操作的用户	外键 → Users(UserID)
+Action	VARCHAR	100	NULL		操作类型（如“创建组”、“冻结用户”）	非空
+TableName	VARCHAR	50	NULL		涉及的数据表	可空
+ActionTime	DATETIME		CURRENT_TIMESTAMP		操作时间	自动生成

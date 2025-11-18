@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>管理员面板</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div id="status">未登录</div>
+        <button onclick="logout()">退出登录</button>
+      </div>
+      <h1>管理员面板</h1>
+      <section>
+        <h2>组审核</h2>
+        <button onclick="listGroups()">刷新待审核组</button>
+        <input id="audit-group-id" placeholder="GroupID" />
+        <select id="audit-status"><option value="1">通过</option><option value="2">拒绝</option></select>
+        <button onclick="auditGroup()">执行审核</button>
+        <pre id="audit-result"></pre>
+      </section>
+      <section>
+        <h2>账号冻结/解冻</h2>
+        <input id="freeze-user-id" placeholder="UserID" />
+        <select id="freeze-active"><option value="0">冻结</option><option value="1">解冻</option></select>
+        <input id="unfreeze-time" placeholder="UnfreezeDateTime 可选" />
+        <button onclick="freezeUser()">提交</button>
+        <pre id="freeze-result"></pre>
+      </section>
+      <section>
+        <h2>解散违规组</h2>
+        <input id="disband-group-id" placeholder="GroupID" />
+        <button onclick="disbandGroup()">解散</button>
+        <pre id="disband-result"></pre>
+      </section>
+      <section>
+        <h2>发布系统通知</h2>
+        <input id="sys-publisher" placeholder="PublisherID" />
+        <input id="sys-title" placeholder="标题" />
+        <input id="sys-content" placeholder="内容" />
+        <button onclick="publishSystemNotification()">发布</button>
+        <pre id="sys-result"></pre>
+      </section>
+    </div>
+    <script src="/app.js"></script>
+    <script>
+      async function listGroups(){ const d=await api.request('/api/groups'); document.getElementById('audit-result').textContent = JSON.stringify(d,null,2); }
+      async function auditGroup(){ const id=parseInt(document.getElementById('audit-group-id').value,10)||0; const status=parseInt(document.getElementById('audit-status').value,10)||1; const d=await api.request(`/api/groups/${id}/status`, 'PATCH', { status }); document.getElementById('audit-result').textContent = JSON.stringify(d,null,2); }
+      async function freezeUser(){ const id=parseInt(document.getElementById('freeze-user-id').value,10)||0; const isActive=parseInt(document.getElementById('freeze-active').value,10)||0; const unfreezeDateTime=document.getElementById('unfreeze-time').value||null; const d=await api.request(`/api/users/${id}/freeze`, 'PATCH', { isActive, unfreezeDateTime }); document.getElementById('freeze-result').textContent = JSON.stringify(d,null,2); }
+      async function disbandGroup(){ const id=parseInt(document.getElementById('disband-group-id').value,10)||0; const d=await api.request(`/api/groups/${id}/disband`, 'DELETE'); document.getElementById('disband-result').textContent = JSON.stringify(d,null,2); }
+      async function publishSystemNotification(){ const publisherId=parseInt(document.getElementById('sys-publisher').value,10)||0; const title=document.getElementById('sys-title').value; const content=document.getElementById('sys-content').value; const d=await api.request('/api/notifications', 'POST', { publisherId, groupId: 0, title, content }); document.getElementById('sys-result').textContent = JSON.stringify(d,null,2); }
+    </script>
+  </body>
+  </html>
