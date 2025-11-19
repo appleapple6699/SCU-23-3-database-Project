@@ -5,6 +5,11 @@ use std::sync::{Arc, Mutex};
 mod storage;
 mod txn;
 mod index;
+pub mod server;
+pub mod db;
+pub mod api;
+pub mod auth;
+pub mod models;
 
 pub type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 pub type Result<T> = std::result::Result<T, Error>;

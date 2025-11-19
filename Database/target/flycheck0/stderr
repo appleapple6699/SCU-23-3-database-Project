@@ -1,0 +1,90 @@
+   0.175219708s  INFO prepare_target{force=false package_id=database v0.1.0 (/Users/moyuanxin/Documents/trae_projects/Database) target="demo"}: cargo::core::compiler::fingerprint: fingerprint error for database v0.1.0 (/Users/moyuanxin/Documents/trae_projects/Database)/Check { test: false }/TargetInner { name: "demo", doc: true, ..: with_path("/Users/moyuanxin/Documents/trae_projects/Database/cmd/demo/main.rs", Edition2021) }
+   0.175237167s  INFO prepare_target{force=false package_id=database v0.1.0 (/Users/moyuanxin/Documents/trae_projects/Database) target="demo"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/moyuanxin/Documents/trae_projects/Database/target/debug/.fingerprint/database-98cd61a3a5f9f055/bin-demo`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: std::backtrace::Backtrace::create
+   1: std::backtrace::Backtrace::capture
+   2: cargo_util::paths::read_bytes
+   3: cargo_util::paths::read
+   4: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   5: cargo::core::compiler::fingerprint::prepare_target
+   6: cargo::core::compiler::compile
+   7: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   8: cargo::ops::cargo_compile::compile_ws
+   9: cargo::ops::cargo_compile::compile_with_exec
+  10: cargo::ops::cargo_compile::compile
+  11: cargo::commands::check::exec
+  12: <cargo::cli::Exec>::exec
+  13: cargo::main
+  14: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  15: std::rt::lang_start::<()>::{closure#0}
+  16: std::rt::lang_start_internal
+  17: _main
+   0.178104417s  INFO prepare_target{force=false package_id=database v0.1.0 (/Users/moyuanxin/Documents/trae_projects/Database) target="demo"}: cargo::core::compiler::fingerprint: fingerprint error for database v0.1.0 (/Users/moyuanxin/Documents/trae_projects/Database)/Check { test: true }/TargetInner { name: "demo", doc: true, ..: with_path("/Users/moyuanxin/Documents/trae_projects/Database/cmd/demo/main.rs", Edition2021) }
+   0.178111667s  INFO prepare_target{force=false package_id=database v0.1.0 (/Users/moyuanxin/Documents/trae_projects/Database) target="demo"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/moyuanxin/Documents/trae_projects/Database/target/debug/.fingerprint/database-a5cecf6440db92c0/test-bin-demo`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: std::backtrace::Backtrace::create
+   1: std::backtrace::Backtrace::capture
+   2: cargo_util::paths::read_bytes
+   3: cargo_util::paths::read
+   4: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   5: cargo::core::compiler::fingerprint::prepare_target
+   6: cargo::core::compiler::compile
+   7: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   8: cargo::ops::cargo_compile::compile_ws
+   9: cargo::ops::cargo_compile::compile_with_exec
+  10: cargo::ops::cargo_compile::compile
+  11: cargo::commands::check::exec
+  12: <cargo::cli::Exec>::exec
+  13: cargo::main
+  14: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  15: std::rt::lang_start::<()>::{closure#0}
+  16: std::rt::lang_start_internal
+  17: _main
+   0.179827333s  INFO prepare_target{force=false package_id=database v0.1.0 (/Users/moyuanxin/Documents/trae_projects/Database) target="server"}: cargo::core::compiler::fingerprint: stale: changed "/Users/moyuanxin/Documents/trae_projects/Database/cmd/server/main.rs"
+   0.179831125s  INFO prepare_target{force=false package_id=database v0.1.0 (/Users/moyuanxin/Documents/trae_projects/Database) target="server"}: cargo::core::compiler::fingerprint:           (vs) "/Users/moyuanxin/Documents/trae_projects/Database/target/debug/.fingerprint/database-01534cb11bf3afa3/dep-bin-server"
+   0.179832917s  INFO prepare_target{force=false package_id=database v0.1.0 (/Users/moyuanxin/Documents/trae_projects/Database) target="server"}: cargo::core::compiler::fingerprint:                FileTime { seconds: 1763539022, nanos: 497559503 } < FileTime { seconds: 1763539062, nanos: 430716042 }
+   0.179992708s  INFO prepare_target{force=false package_id=database v0.1.0 (/Users/moyuanxin/Documents/trae_projects/Database) target="server"}: cargo::core::compiler::fingerprint: fingerprint dirty for database v0.1.0 (/Users/moyuanxin/Documents/trae_projects/Database)/Check { test: false }/TargetInner { name: "server", doc: true, ..: with_path("/Users/moyuanxin/Documents/trae_projects/Database/cmd/server/main.rs", Edition2021) }
+   0.179997417s  INFO prepare_target{force=false package_id=database v0.1.0 (/Users/moyuanxin/Documents/trae_projects/Database) target="server"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(ChangedFile { reference: "/Users/moyuanxin/Documents/trae_projects/Database/target/debug/.fingerprint/database-01534cb11bf3afa3/dep-bin-server", reference_mtime: FileTime { seconds: 1763539022, nanos: 497559503 }, stale: "/Users/moyuanxin/Documents/trae_projects/Database/cmd/server/main.rs", stale_mtime: FileTime { seconds: 1763539062, nanos: 430716042 } }))
+   0.180748208s  INFO prepare_target{force=false package_id=database v0.1.0 (/Users/moyuanxin/Documents/trae_projects/Database) target="server"}: cargo::core::compiler::fingerprint: stale: changed "/Users/moyuanxin/Documents/trae_projects/Database/cmd/server/main.rs"
+   0.180750583s  INFO prepare_target{force=false package_id=database v0.1.0 (/Users/moyuanxin/Documents/trae_projects/Database) target="server"}: cargo::core::compiler::fingerprint:           (vs) "/Users/moyuanxin/Documents/trae_projects/Database/target/debug/.fingerprint/database-2031cc2eb9b490ca/dep-test-bin-server"
+   0.180752625s  INFO prepare_target{force=false package_id=database v0.1.0 (/Users/moyuanxin/Documents/trae_projects/Database) target="server"}: cargo::core::compiler::fingerprint:                FileTime { seconds: 1763539022, nanos: 497331751 } < FileTime { seconds: 1763539062, nanos: 430716042 }
+   0.180819000s  INFO prepare_target{force=false package_id=database v0.1.0 (/Users/moyuanxin/Documents/trae_projects/Database) target="server"}: cargo::core::compiler::fingerprint: fingerprint dirty for database v0.1.0 (/Users/moyuanxin/Documents/trae_projects/Database)/Check { test: true }/TargetInner { name: "server", doc: true, ..: with_path("/Users/moyuanxin/Documents/trae_projects/Database/cmd/server/main.rs", Edition2021) }
+   0.180825750s  INFO prepare_target{force=false package_id=database v0.1.0 (/Users/moyuanxin/Documents/trae_projects/Database) target="server"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(ChangedFile { reference: "/Users/moyuanxin/Documents/trae_projects/Database/target/debug/.fingerprint/database-2031cc2eb9b490ca/dep-test-bin-server", reference_mtime: FileTime { seconds: 1763539022, nanos: 497331751 }, stale: "/Users/moyuanxin/Documents/trae_projects/Database/cmd/server/main.rs", stale_mtime: FileTime { seconds: 1763539062, nanos: 430716042 } }))
+   0.181458750s  INFO prepare_target{force=false package_id=database v0.1.0 (/Users/moyuanxin/Documents/trae_projects/Database) target="basic"}: cargo::core::compiler::fingerprint: fingerprint error for database v0.1.0 (/Users/moyuanxin/Documents/trae_projects/Database)/Check { test: true }/TargetInner { kind: "test", name: "basic", benched: false, ..: with_path("/Users/moyuanxin/Documents/trae_projects/Database/tests/basic.rs", Edition2021) }
+   0.181463500s  INFO prepare_target{force=false package_id=database v0.1.0 (/Users/moyuanxin/Documents/trae_projects/Database) target="basic"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/moyuanxin/Documents/trae_projects/Database/target/debug/.fingerprint/database-f2e80fbc1e161e48/test-integration-test-basic`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: std::backtrace::Backtrace::create
+   1: std::backtrace::Backtrace::capture
+   2: cargo_util::paths::read_bytes
+   3: cargo_util::paths::read
+   4: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   5: cargo::core::compiler::fingerprint::prepare_target
+   6: cargo::core::compiler::compile
+   7: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   8: cargo::ops::cargo_compile::compile_ws
+   9: cargo::ops::cargo_compile::compile_with_exec
+  10: cargo::ops::cargo_compile::compile
+  11: cargo::commands::check::exec
+  12: <cargo::cli::Exec>::exec
+  13: cargo::main
+  14: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  15: std::rt::lang_start::<()>::{closure#0}
+  16: std::rt::lang_start_internal
+  17: _main
+    Checking database v0.1.0 (/Users/moyuanxin/Documents/trae_projects/Database)
+error: could not compile `database` (bin "demo" test) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `database` (bin "demo") due to 1 previous error
+error: could not compile `database` (test "basic") due to 1 previous error

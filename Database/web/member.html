@@ -5,51 +5,83 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>组员页面</title>
     <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css" />
   </head>
   <body>
-    <div class="container">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div id="status">未登录</div>
-        <button onclick="logout()">退出登录</button>
+    <div class="nav">
+      <div class="nav-inner">
+        <div class="brand">Database</div>
+        <div class="nav-links">
+          <a href="/">演示</a>
+          <a href="/admin.html">管理员</a>
+          <a href="/leader.html">组长</a>
+          <a href="/member.html">组员</a>
+          <a href="/auth.html">登录/注册</a>
+        </div>
+        <div class="nav-right">
+          <span id="status">未登录</span>
+          <button class="btn btn-outline" onclick="logout()">退出登录</button>
+        </div>
       </div>
-      <h1>组员页面</h1>
-      <section>
-        <h2>查看任务</h2>
-        <button onclick="listTasks()">刷新任务</button>
-        <pre id="tasks-result"></pre>
-      </section>
-      <section>
-        <h2>提交条目</h2>
-        <input id="entry-task" placeholder="TaskID" />
-        <input id="entry-user" placeholder="SubmitterID" />
-        <input id="entry-summary" placeholder="概述" />
-        <input id="entry-content" placeholder="内容" />
-        <button onclick="createEntry()">提交</button>
-        <pre id="entry-result"></pre>
-      </section>
-      <section>
-        <h2>审核条目</h2>
-        <input id="audit-entry" placeholder="EntryID" />
-        <input id="audit-user" placeholder="AuditorID" />
-        <select id="audit-result"><option value="1">通过</option><option value="0">不通过</option></select>
-        <input id="audit-desc" placeholder="说明" />
-        <button onclick="createAuditEntry()">审核</button>
-        <pre id="audit-result-pre"></pre>
-      </section>
-      <section>
-        <h2>确认通知</h2>
-        <input id="confirm-notification" placeholder="NotificationID" />
-        <input id="confirm-user" placeholder="UserID" />
-        <button onclick="confirmNotification()">确认</button>
-        <pre id="confirm-result"></pre>
-      </section>
     </div>
+    <div id="app" class="container">
+      <h1>组员页面</h1>
+      <el-card class="card">
+        <h2>查看任务</h2>
+        <el-button @click="listTasks">刷新任务</el-button>
+        <pre v-text="pretty(tasksResult)"></pre>
+      </el-card>
+      <el-card class="card">
+        <h2>提交条目</h2>
+        <el-input v-model="entry.taskId" placeholder="TaskID" />
+        <el-input v-model="entry.submitterId" placeholder="SubmitterID" />
+        <el-input v-model="entry.summary" placeholder="概述" />
+        <el-input v-model="entry.content" placeholder="内容" />
+        <el-button type="primary" @click="createEntry">提交</el-button>
+        <pre v-text="pretty(entryResult)"></pre>
+      </el-card>
+      <el-card class="card">
+        <h2>审核条目</h2>
+        <el-input v-model="audit.entryId" placeholder="EntryID" />
+        <el-input v-model="audit.auditorId" placeholder="AuditorID" />
+        <el-select v-model="audit.auditResult" placeholder="结果">
+          <el-option label="通过" value="1" />
+          <el-option label="不通过" value="0" />
+        </el-select>
+        <el-input v-model="audit.description" placeholder="说明" />
+        <el-button type="primary" @click="createAuditEntry">审核</el-button>
+        <pre v-text="pretty(auditResult)"></pre>
+      </el-card>
+      <el-card class="card">
+        <h2>确认通知</h2>
+        <el-input v-model="confirm.notificationId" placeholder="NotificationID" />
+        <el-input v-model="confirm.userId" placeholder="UserID" />
+        <el-button type="primary" @click="confirmNotification">确认</el-button>
+        <pre v-text="pretty(confirmResult)"></pre>
+      </el-card>
+    </div>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://unpkg.com/element-plus/dist/index.full.min.js"></script>
     <script src="/app.js"></script>
     <script>
-      async function listTasks(){ const d=await api.request('/api/tasks'); document.getElementById('tasks-result').textContent = JSON.stringify(d,null,2); }
-      async function createEntry(){ const taskId=parseInt(document.getElementById('entry-task').value,10)||0; const submitterId=parseInt(document.getElementById('entry-user').value,10)||0; const summary=document.getElementById('entry-summary').value; const content=document.getElementById('entry-content').value; const d=await api.request('/api/entries', 'POST', { taskId, submitterId, summary, content }); document.getElementById('entry-result').textContent = JSON.stringify(d,null,2); }
-      async function createAuditEntry(){ const entryId=parseInt(document.getElementById('audit-entry').value,10)||0; const auditorId=parseInt(document.getElementById('audit-user').value,10)||0; const auditResult=parseInt(document.getElementById('audit-result').value,10)||0; const description=document.getElementById('audit-desc').value; const d=await api.request('/api/auditentries', 'POST', { entryId, auditorId, auditResult, description }); document.getElementById('audit-result-pre').textContent = JSON.stringify(d,null,2); }
-      async function confirmNotification(){ const notificationId=parseInt(document.getElementById('confirm-notification').value,10)||0; const userId=parseInt(document.getElementById('confirm-user').value,10)||0; const d=await api.request('/api/notificationconfirmations', 'POST', { notificationId, userId }); document.getElementById('confirm-result').textContent = JSON.stringify(d,null,2); }
+      const { createApp } = Vue;
+      const app = createApp({
+        data(){ return {
+          tasksResult:null,
+          entry: { taskId:'', submitterId:'', summary:'', content:'' }, entryResult:null,
+          audit: { entryId:'', auditorId:'', auditResult:'1', description:'' }, auditResult:null,
+          confirm: { notificationId:'', userId:'' }, confirmResult:null,
+        }; },
+        methods: {
+          pretty(v){ return v ? JSON.stringify(v,null,2) : ''; },
+          async listTasks(){ this.tasksResult = await api.request('/api/tasks'); },
+          async createEntry(){ const payload = { taskId:parseInt(this.entry.taskId||'0',10), submitterId:parseInt(this.entry.submitterId||'0',10), summary:this.entry.summary, content:this.entry.content }; this.entryResult = await api.request('/api/entries','POST',payload); },
+          async createAuditEntry(){ const payload = { entryId:parseInt(this.audit.entryId||'0',10), auditorId:parseInt(this.audit.auditorId||'0',10), auditResult:parseInt(this.audit.auditResult||'1',10), description:this.audit.description }; this.auditResult = await api.request('/api/auditentries','POST',payload); },
+          async confirmNotification(){ const payload = { notificationId:parseInt(this.confirm.notificationId||'0',10), userId:parseInt(this.confirm.userId||'0',10) }; this.confirmResult = await api.request('/api/notificationconfirmations','POST',payload); },
+        }
+      });
+      app.use(ElementPlus);
+      app.mount('#app');
     </script>
   </body>
   </html>

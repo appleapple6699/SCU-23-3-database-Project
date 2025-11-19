@@ -5,56 +5,88 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>组长面板</title>
     <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css" />
   </head>
   <body>
-    <div class="container">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div id="status">未登录</div>
-        <button onclick="logout()">退出登录</button>
+    <div class="nav">
+      <div class="nav-inner">
+        <div class="brand">Database</div>
+        <div class="nav-links">
+          <a href="/">演示</a>
+          <a href="/admin.html">管理员</a>
+          <a href="/leader.html">组长</a>
+          <a href="/member.html">组员</a>
+          <a href="/auth.html">登录/注册</a>
+        </div>
+        <div class="nav-right">
+          <span id="status">未登录</span>
+          <button class="btn btn-outline" onclick="logout()">退出登录</button>
+        </div>
       </div>
-      <h1>组长面板</h1>
-      <section>
-        <h2>待审核申请</h2>
-        <input id="apps-group-id" placeholder="GroupID" />
-        <button onclick="listApplications()">刷新申请</button>
-        <pre id="apps-result"></pre>
-        <h3>审核操作</h3>
-        <input id="apps-user-id" placeholder="UserID" />
-        <input id="apps-group-id2" placeholder="GroupID" />
-        <select id="apps-action"><option value="1">通过</option><option value="2">拒绝</option></select>
-        <button onclick="updateApplication()">提交审核</button>
-      </section>
-      <section>
-        <h2>发布组内通知</h2>
-        <input id="grp-publisher" placeholder="PublisherID" />
-        <input id="grp-group" placeholder="GroupID" />
-        <input id="grp-title" placeholder="标题" />
-        <input id="grp-content" placeholder="内容" />
-        <button onclick="publishGroupNotification()">发布</button>
-        <pre id="grp-result"></pre>
-      </section>
-      <section>
-        <h2>权限转让</h2>
-        <input id="transfer-group" placeholder="GroupID" />
-        <input id="transfer-from" placeholder="原组长UserID" />
-        <input id="transfer-to" placeholder="新组长UserID" />
-        <button onclick="transferLeader()">转让</button>
-        <pre id="transfer-result"></pre>
-      </section>
-      <section>
-        <h2>活跃度统计</h2>
-        <input id="stats-group" placeholder="GroupID" />
-        <button onclick="groupStats()">查看</button>
-        <pre id="stats-result"></pre>
-      </section>
     </div>
+    <div id="app" class="container">
+      <h1>组长面板</h1>
+      <el-card class="card">
+        <h2>待审核申请</h2>
+        <el-input v-model="apps.groupId" placeholder="GroupID" />
+        <el-button @click="listApplications">刷新申请</el-button>
+        <pre v-text="pretty(appsResult)"></pre>
+        <h3>审核操作</h3>
+        <el-input v-model="apps.userId" placeholder="UserID" />
+        <el-input v-model="apps.groupId2" placeholder="GroupID" />
+        <el-select v-model="apps.action" placeholder="选择">
+          <el-option label="通过" value="1" />
+          <el-option label="拒绝" value="2" />
+        </el-select>
+        <el-button type="primary" @click="updateApplication">提交审核</el-button>
+      </el-card>
+      <el-card class="card">
+        <h2>发布组内通知</h2>
+        <el-input v-model="grp.publisherId" placeholder="PublisherID" />
+        <el-input v-model="grp.groupId" placeholder="GroupID" />
+        <el-input v-model="grp.title" placeholder="标题" />
+        <el-input v-model="grp.content" placeholder="内容" />
+        <el-button type="primary" @click="publishGroupNotification">发布</el-button>
+        <pre v-text="pretty(grpResult)"></pre>
+      </el-card>
+      <el-card class="card">
+        <h2>权限转让</h2>
+        <el-input v-model="transfer.groupId" placeholder="GroupID" />
+        <el-input v-model="transfer.fromUserId" placeholder="原组长UserID" />
+        <el-input v-model="transfer.toUserId" placeholder="新组长UserID" />
+        <el-button type="primary" @click="transferLeader">转让</el-button>
+        <pre v-text="pretty(transferResult)"></pre>
+      </el-card>
+      <el-card class="card">
+        <h2>活跃度统计</h2>
+        <el-input v-model="stats.groupId" placeholder="GroupID" />
+        <el-button @click="groupStats">查看</el-button>
+        <pre v-text="pretty(statsResult)"></pre>
+      </el-card>
+    </div>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://unpkg.com/element-plus/dist/index.full.min.js"></script>
     <script src="/app.js"></script>
     <script>
-      async function listApplications(){ const id=parseInt(document.getElementById('apps-group-id').value,10)||0; const d=await api.request(`/api/usergroups/applications?groupId=${id}`); document.getElementById('apps-result').textContent = JSON.stringify(d,null,2); }
-      async function updateApplication(){ const userId=parseInt(document.getElementById('apps-user-id').value,10)||0; const groupId=parseInt(document.getElementById('apps-group-id2').value,10)||0; const action=parseInt(document.getElementById('apps-action').value,10)||1; const d=await api.request('/api/usergroups/update', 'PATCH', { userId, groupId, action }); document.getElementById('apps-result').textContent = JSON.stringify(d,null,2); }
-      async function publishGroupNotification(){ const publisherId=parseInt(document.getElementById('grp-publisher').value,10)||0; const groupId=parseInt(document.getElementById('grp-group').value,10)||0; const title=document.getElementById('grp-title').value; const content=document.getElementById('grp-content').value; const d=await api.request('/api/notifications', 'POST', { publisherId, groupId, title, content }); document.getElementById('grp-result').textContent = JSON.stringify(d,null,2); }
-      async function transferLeader(){ const groupId=parseInt(document.getElementById('transfer-group').value,10)||0; const fromUserId=parseInt(document.getElementById('transfer-from').value,10)||0; const toUserId=parseInt(document.getElementById('transfer-to').value,10)||0; const d=await api.request(`/api/groups/${groupId}/transfer`, 'POST', { fromUserId, toUserId }); document.getElementById('transfer-result').textContent = JSON.stringify(d,null,2); }
-      async function groupStats(){ const groupId=parseInt(document.getElementById('stats-group').value,10)||0; const d=await api.request(`/api/groups/${groupId}/stats`); document.getElementById('stats-result').textContent = JSON.stringify(d,null,2); }
+      const { createApp } = Vue;
+      const app = createApp({
+        data(){ return {
+          apps: { groupId:'', userId:'', groupId2:'', action:'1' }, appsResult:null,
+          grp: { publisherId:'', groupId:'', title:'', content:'' }, grpResult:null,
+          transfer: { groupId:'', fromUserId:'', toUserId:'' }, transferResult:null,
+          stats: { groupId:'' }, statsResult:null,
+        }; },
+        methods: {
+          pretty(v){ return v ? JSON.stringify(v,null,2) : ''; },
+          async listApplications(){ const id=parseInt(this.apps.groupId||'0',10); this.appsResult = await api.request(`/api/usergroups/applications?groupId=${id}`); },
+          async updateApplication(){ const payload = { userId:parseInt(this.apps.userId||'0',10), groupId:parseInt(this.apps.groupId2||'0',10), action:parseInt(this.apps.action||'1',10) }; this.appsResult = await api.request('/api/usergroups/update','PATCH',payload); },
+          async publishGroupNotification(){ const payload = { publisherId:parseInt(this.grp.publisherId||'0',10), groupId:parseInt(this.grp.groupId||'0',10), title:this.grp.title, content:this.grp.content }; this.grpResult = await api.request('/api/notifications','POST',payload); },
+          async transferLeader(){ const id=parseInt(this.transfer.groupId||'0',10); const payload = { fromUserId:parseInt(this.transfer.fromUserId||'0',10), toUserId:parseInt(this.transfer.toUserId||'0',10) }; this.transferResult = await api.request(`/api/groups/${id}/transfer`, 'POST', payload); },
+          async groupStats(){ const id=parseInt(this.stats.groupId||'0',10); this.statsResult = await api.request(`/api/groups/${id}/stats`); },
+        }
+      });
+      app.use(ElementPlus);
+      app.mount('#app');
     </script>
   </body>
   </html>

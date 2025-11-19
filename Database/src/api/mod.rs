@@ -1,6 +1,6 @@
 use axum::{Router, routing::{post, get, patch, delete, put}, extract::{State, Path, Query}, Json};
 use serde_json::json;
-use sqlx::SqlitePool;
+use sqlx::{SqlitePool, Row};
 use crate::models::{UnifiedResponse, RegisterRequest, LoginRequest, UpdateUserRequest, LoginResponse};
 use crate::auth;
 use axum::http::HeaderMap;
@@ -43,13 +43,11 @@ pub fn build_router(state: AppState) -> Router {
 
 async fn register(State(state): State<AppState>, Json(req): Json<RegisterRequest>) -> Json<UnifiedResponse<serde_json::Value>> {
     let hashed = match hash(req.password, DEFAULT_COST) { Ok(h) => h, Err(_) => return Json(UnifiedResponse::err(2001, "加密失败")) };
-    let mut tx = match state.pool.begin().await { Ok(t) => t, Err(_) => return Json(UnifiedResponse::err(2001, "事务失败")) };
     let res = sqlx::query("INSERT INTO Users (Password, Nickname, IsActive) VALUES (?1, ?2, 1)")
         .bind(hashed)
         .bind(req.nickname)
-        .execute(&mut tx).await;
-    if res.is_err() { let _ = tx.rollback().await; return Json(UnifiedResponse::err(2002, "注册失败")); }
-    if tx.commit().await.is_err() { return Json(UnifiedResponse::err(2001, "事务失败")); }
+        .execute(&state.pool).await;
+    if res.is_err() { return Json(UnifiedResponse::err(2002, "注册失败")); }
     Json(UnifiedResponse::ok(json!({})))
 }
 
@@ -73,19 +71,17 @@ async fn login(State(state): State<AppState>, Json(req): Json<LoginRequest>) -> 
 }
 
 async fn update_user(State(state): State<AppState>, Path(id): Path<i64>, Json(req): Json<UpdateUserRequest>) -> Json<UnifiedResponse<serde_json::Value>> {
-    let mut tx = match state.pool.begin().await { Ok(t) => t, Err(_) => return Json(UnifiedResponse::err(2001, "事务失败")) };
     if let Some(nick) = req.nickname.clone() {
-        if sqlx::query("UPDATE Users SET Nickname=?1 WHERE UserID=?2").bind(nick).bind(id).execute(&mut tx).await.is_err() {
-            let _ = tx.rollback().await; return Json(UnifiedResponse::err(2004, "更新失败"));
+        if sqlx::query("UPDATE Users SET Nickname=?1 WHERE UserID=?2").bind(nick).bind(id).execute(&state.pool).await.is_err() {
+            return Json(UnifiedResponse::err(2004, "更新失败"));
         }
     }
     if let Some(pw) = req.password.clone() {
-        let hashed = match hash(pw, DEFAULT_COST) { Ok(h) => h, Err(_) => { let _ = tx.rollback().await; return Json(UnifiedResponse::err(2001, "加密失败")); } };
-        if sqlx::query("UPDATE Users SET Password=?1 WHERE UserID=?2").bind(hashed).bind(id).execute(&mut tx).await.is_err() {
-            let _ = tx.rollback().await; return Json(UnifiedResponse::err(2004, "更新失败"));
+        let hashed = match hash(pw, DEFAULT_COST) { Ok(h) => h, Err(_) => { return Json(UnifiedResponse::err(2001, "加密失败")); } };
+        if sqlx::query("UPDATE Users SET Password=?1 WHERE UserID=?2").bind(hashed).bind(id).execute(&state.pool).await.is_err() {
+            return Json(UnifiedResponse::err(2004, "更新失败"));
         }
     }
-    if tx.commit().await.is_err() { return Json(UnifiedResponse::err(2001, "事务失败")); }
     Json(UnifiedResponse::ok(json!({})))
 }
 
@@ -106,14 +102,12 @@ async fn create_group(State(state): State<AppState>, Json(payload): Json<serde_j
     let name = payload.get("name").and_then(|v| v.as_str()).unwrap_or("");
     let desc = payload.get("description").and_then(|v| v.as_str()).unwrap_or("");
     let creator = payload.get("creatorUserId").and_then(|v| v.as_i64()).unwrap_or(0);
-    let mut tx = match state.pool.begin().await { Ok(t) => t, Err(_) => return Json(UnifiedResponse::err(2001, "事务失败")) };
     let res = sqlx::query("INSERT INTO Groups (GroupName, Description, Status, CreatedByUserID) VALUES (?1, ?2, 0, ?3)")
         .bind(name)
         .bind(desc)
         .bind(creator)
-        .execute(&mut tx).await;
-    if res.is_err() { let _ = tx.rollback().await; return Json(UnifiedResponse::err(2005, "创建组失败")); }
-    if tx.commit().await.is_err() { return Json(UnifiedResponse::err(2001, "事务失败")); }
+        .execute(&state.pool).await;
+    if res.is_err() { return Json(UnifiedResponse::err(2005, "创建组失败")); }
     Json(UnifiedResponse::ok(json!({})))
 }
 
@@ -144,15 +138,13 @@ async fn create_task(State(state): State<AppState>, Json(payload): Json<serde_js
     let title = payload.get("title").and_then(|v| v.as_str()).unwrap_or("");
     let content = payload.get("content").and_then(|v| v.as_str()).unwrap_or("");
     let deadline = payload.get("deadline").and_then(|v| v.as_str());
-    let mut tx = match state.pool.begin().await { Ok(t) => t, Err(_) => return Json(UnifiedResponse::err(2001, "事务失败")) };
     let mut q = sqlx::query("INSERT INTO Tasks (GroupID, PublisherID, Title, Content, Deadline) VALUES (?1, ?2, ?3, ?4, ?5)")
         .bind(group_id)
         .bind(publisher_id)
         .bind(title)
         .bind(content)
         .bind(deadline);
-    if q.execute(&mut tx).await.is_err() { let _ = tx.rollback().await; return Json(UnifiedResponse::err(2007, "创建任务失败")); }
-    if tx.commit().await.is_err() { return Json(UnifiedResponse::err(2001, "事务失败")); }
+    if q.execute(&state.pool).await.is_err() { return Json(UnifiedResponse::err(2007, "创建任务失败")); }
     Json(UnifiedResponse::ok(json!({})))
 }
 
@@ -178,13 +170,11 @@ async fn list_tasks(State(state): State<AppState>) -> Json<UnifiedResponse<serde
 async fn apply_usergroup(State(state): State<AppState>, Json(payload): Json<serde_json::Value>) -> Json<UnifiedResponse<serde_json::Value>> {
     let user_id = payload.get("userId").and_then(|v| v.as_i64()).unwrap_or(0);
     let group_id = payload.get("groupId").and_then(|v| v.as_i64()).unwrap_or(0);
-    let mut tx = match state.pool.begin().await { Ok(t) => t, Err(_) => return Json(UnifiedResponse::err(2001, "事务失败")) };
     let res = sqlx::query("INSERT INTO UserGroups (UserID, GroupID, GroupPermission, Status) VALUES (?1, ?2, 0, 0)")
         .bind(user_id)
         .bind(group_id)
-        .execute(&mut tx).await;
-    if res.is_err() { let _ = tx.rollback().await; return Json(UnifiedResponse::err(2009, "申请失败")); }
-    if tx.commit().await.is_err() { return Json(UnifiedResponse::err(2001, "事务失败")); }
+        .execute(&state.pool).await;
+    if res.is_err() { return Json(UnifiedResponse::err(2009, "申请失败")); }
     Json(UnifiedResponse::ok(json!({})))
 }
 
@@ -254,14 +244,12 @@ async fn update_task(State(state): State<AppState>, headers: HeaderMap, Path(id)
 
 async fn disband_group(State(state): State<AppState>, headers: HeaderMap, Path(id): Path<i64>) -> Json<UnifiedResponse<serde_json::Value>> {
     if auth::require_admin(&state.pool, &headers).await.is_none() { return Json(UnifiedResponse::err(401, "未授权")); }
-    let mut tx = match state.pool.begin().await { Ok(t) => t, Err(_) => return Json(UnifiedResponse::err(2001, "事务失败")) };
-    if sqlx::query("UPDATE Groups SET Status=2 WHERE GroupID=?1").bind(id).execute(&mut tx).await.is_err() {
-        let _ = tx.rollback().await; return Json(UnifiedResponse::err(2016, "解散组失败"));
+    if sqlx::query("UPDATE Groups SET Status=2 WHERE GroupID=?1").bind(id).execute(&state.pool).await.is_err() {
+        return Json(UnifiedResponse::err(2016, "解散组失败"));
     }
-    if sqlx::query("DELETE FROM UserGroups WHERE GroupID=?1").bind(id).execute(&mut tx).await.is_err() {
-        let _ = tx.rollback().await; return Json(UnifiedResponse::err(2016, "解散组失败"));
+    if sqlx::query("DELETE FROM UserGroups WHERE GroupID=?1").bind(id).execute(&state.pool).await.is_err() {
+        return Json(UnifiedResponse::err(2016, "解散组失败"));
     }
-    if tx.commit().await.is_err() { return Json(UnifiedResponse::err(2001, "事务失败")); }
     Json(UnifiedResponse::ok(json!({})))
 }
 
@@ -269,12 +257,10 @@ async fn transfer_leader(State(state): State<AppState>, headers: HeaderMap, Path
     if auth::require_leader(&state.pool, &headers, id).await.is_none() { return Json(UnifiedResponse::err(401, "未授权")); }
     let from_id = payload.get("fromUserId").and_then(|v| v.as_i64()).unwrap_or(0);
     let to_id = payload.get("toUserId").and_then(|v| v.as_i64()).unwrap_or(0);
-    let mut tx = match state.pool.begin().await { Ok(t) => t, Err(_) => return Json(UnifiedResponse::err(2001, "事务失败")) };
     if sqlx::query("UPDATE UserGroups SET GroupPermission=0 WHERE UserID=?1 AND GroupID=?2")
-        .bind(from_id).bind(id).execute(&mut tx).await.is_err() { let _ = tx.rollback().await; return Json(UnifiedResponse::err(2017, "转让失败")); }
+        .bind(from_id).bind(id).execute(&state.pool).await.is_err() { return Json(UnifiedResponse::err(2017, "转让失败")); }
     if sqlx::query("UPDATE UserGroups SET GroupPermission=2 WHERE UserID=?1 AND GroupID=?2")
-        .bind(to_id).bind(id).execute(&mut tx).await.is_err() { let _ = tx.rollback().await; return Json(UnifiedResponse::err(2017, "转让失败")); }
-    if tx.commit().await.is_err() { return Json(UnifiedResponse::err(2001, "事务失败")); }
+        .bind(to_id).bind(id).execute(&state.pool).await.is_err() { return Json(UnifiedResponse::err(2017, "转让失败")); }
     Json(UnifiedResponse::ok(json!({})))
 }
 

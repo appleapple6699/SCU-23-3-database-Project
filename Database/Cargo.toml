@@ -26,6 +26,6 @@ uuid = { version = "1", features = ["v4"] }
 bcrypt = "0.15"
 chrono = { version = "0.4", features = ["clock"] }
 tower-http = { version = "0.5", features = ["fs"] }
-[[]bin]
+[[bin]]
 name = "seed_admin"
 path = "cmd/seed_admin/main.rs"

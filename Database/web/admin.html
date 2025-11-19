@@ -5,52 +5,87 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>管理员面板</title>
     <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css" />
   </head>
   <body>
-    <div class="container">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div id="status">未登录</div>
-        <button onclick="logout()">退出登录</button>
+    <div class="nav">
+      <div class="nav-inner">
+        <div class="brand">Database</div>
+        <div class="nav-links">
+          <a href="/">演示</a>
+          <a href="/admin.html">管理员</a>
+          <a href="/leader.html">组长</a>
+          <a href="/member.html">组员</a>
+          <a href="/auth.html">登录/注册</a>
+        </div>
+        <div class="nav-right">
+          <span id="status">未登录</span>
+          <button class="btn btn-outline" onclick="logout()">退出登录</button>
+        </div>
       </div>
-      <h1>管理员面板</h1>
-      <section>
-        <h2>组审核</h2>
-        <button onclick="listGroups()">刷新待审核组</button>
-        <input id="audit-group-id" placeholder="GroupID" />
-        <select id="audit-status"><option value="1">通过</option><option value="2">拒绝</option></select>
-        <button onclick="auditGroup()">执行审核</button>
-        <pre id="audit-result"></pre>
-      </section>
-      <section>
-        <h2>账号冻结/解冻</h2>
-        <input id="freeze-user-id" placeholder="UserID" />
-        <select id="freeze-active"><option value="0">冻结</option><option value="1">解冻</option></select>
-        <input id="unfreeze-time" placeholder="UnfreezeDateTime 可选" />
-        <button onclick="freezeUser()">提交</button>
-        <pre id="freeze-result"></pre>
-      </section>
-      <section>
-        <h2>解散违规组</h2>
-        <input id="disband-group-id" placeholder="GroupID" />
-        <button onclick="disbandGroup()">解散</button>
-        <pre id="disband-result"></pre>
-      </section>
-      <section>
-        <h2>发布系统通知</h2>
-        <input id="sys-publisher" placeholder="PublisherID" />
-        <input id="sys-title" placeholder="标题" />
-        <input id="sys-content" placeholder="内容" />
-        <button onclick="publishSystemNotification()">发布</button>
-        <pre id="sys-result"></pre>
-      </section>
     </div>
+    <div id="app" class="container">
+      <h1>管理员面板</h1>
+      <el-card class="card">
+        <h2>组审核</h2>
+        <el-button @click="listGroups">刷新待审核组</el-button>
+        <el-input v-model="audit.groupId" placeholder="GroupID" />
+        <el-select v-model="audit.status" placeholder="选择">
+          <el-option label="通过" value="1" />
+          <el-option label="拒绝" value="2" />
+        </el-select>
+        <el-button type="primary" @click="auditGroup">执行审核</el-button>
+        <pre v-text="pretty(auditResult)"></pre>
+      </el-card>
+      <el-card class="card">
+        <h2>账号冻结/解冻</h2>
+        <el-input v-model="freeze.userId" placeholder="UserID" />
+        <el-select v-model="freeze.isActive" placeholder="状态">
+          <el-option label="冻结" value="0" />
+          <el-option label="解冻" value="1" />
+        </el-select>
+        <el-input v-model="freeze.unfreezeDateTime" placeholder="UnfreezeDateTime 可选" />
+        <el-button type="primary" @click="freezeUser">提交</el-button>
+        <pre v-text="pretty(freezeResult)"></pre>
+      </el-card>
+      <el-card class="card">
+        <h2>解散违规组</h2>
+        <el-input v-model="disband.groupId" placeholder="GroupID" />
+        <el-button type="danger" @click="disbandGroup">解散</el-button>
+        <pre v-text="pretty(disbandResult)"></pre>
+      </el-card>
+      <el-card class="card">
+        <h2>发布系统通知</h2>
+        <el-input v-model="sys.publisherId" placeholder="PublisherID" />
+        <el-input v-model="sys.title" placeholder="标题" />
+        <el-input v-model="sys.content" placeholder="内容" />
+        <el-button type="primary" @click="publishSystemNotification">发布</el-button>
+        <pre v-text="pretty(sysResult)"></pre>
+      </el-card>
+    </div>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://unpkg.com/element-plus/dist/index.full.min.js"></script>
     <script src="/app.js"></script>
     <script>
-      async function listGroups(){ const d=await api.request('/api/groups'); document.getElementById('audit-result').textContent = JSON.stringify(d,null,2); }
-      async function auditGroup(){ const id=parseInt(document.getElementById('audit-group-id').value,10)||0; const status=parseInt(document.getElementById('audit-status').value,10)||1; const d=await api.request(`/api/groups/${id}/status`, 'PATCH', { status }); document.getElementById('audit-result').textContent = JSON.stringify(d,null,2); }
-      async function freezeUser(){ const id=parseInt(document.getElementById('freeze-user-id').value,10)||0; const isActive=parseInt(document.getElementById('freeze-active').value,10)||0; const unfreezeDateTime=document.getElementById('unfreeze-time').value||null; const d=await api.request(`/api/users/${id}/freeze`, 'PATCH', { isActive, unfreezeDateTime }); document.getElementById('freeze-result').textContent = JSON.stringify(d,null,2); }
-      async function disbandGroup(){ const id=parseInt(document.getElementById('disband-group-id').value,10)||0; const d=await api.request(`/api/groups/${id}/disband`, 'DELETE'); document.getElementById('disband-result').textContent = JSON.stringify(d,null,2); }
-      async function publishSystemNotification(){ const publisherId=parseInt(document.getElementById('sys-publisher').value,10)||0; const title=document.getElementById('sys-title').value; const content=document.getElementById('sys-content').value; const d=await api.request('/api/notifications', 'POST', { publisherId, groupId: 0, title, content }); document.getElementById('sys-result').textContent = JSON.stringify(d,null,2); }
+      const { createApp } = Vue;
+      const app = createApp({
+        data(){ return {
+          audit: { groupId:'', status:'1' }, auditResult:null,
+          freeze: { userId:'', isActive:'0', unfreezeDateTime:'' }, freezeResult:null,
+          disband: { groupId:'' }, disbandResult:null,
+          sys: { publisherId:'', title:'', content:'' }, sysResult:null,
+        }; },
+        methods: {
+          pretty(v){ return v ? JSON.stringify(v,null,2) : ''; },
+          async listGroups(){ this.auditResult = await api.request('/api/groups'); },
+          async auditGroup(){ const id=parseInt(this.audit.groupId||'0',10); const status=parseInt(this.audit.status||'1',10); this.auditResult = await api.request(`/api/groups/${id}/status`, 'PATCH', { status }); },
+          async freezeUser(){ const id=parseInt(this.freeze.userId||'0',10); const isActive=parseInt(this.freeze.isActive||'0',10); const unfreezeDateTime=this.freeze.unfreezeDateTime||null; this.freezeResult = await api.request(`/api/users/${id}/freeze`, 'PATCH', { isActive, unfreezeDateTime }); },
+          async disbandGroup(){ const id=parseInt(this.disband.groupId||'0',10); this.disbandResult = await api.request(`/api/groups/${id}/disband`, 'DELETE'); },
+          async publishSystemNotification(){ const payload = { publisherId:parseInt(this.sys.publisherId||'0',10), groupId:0, title:this.sys.title, content:this.sys.content }; this.sysResult = await api.request('/api/notifications', 'POST', payload); },
+        }
+      });
+      app.use(ElementPlus);
+      app.mount('#app');
     </script>
   </body>
   </html>

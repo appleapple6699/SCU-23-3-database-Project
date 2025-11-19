@@ -9,7 +9,7 @@ async fn main() {
     let db_url = std::env::var("DB_URL").unwrap_or_else(|_| "sqlite://data/app.db".to_string());
 
     let pool = SqlitePool::connect(&db_url).await.unwrap();
-    let _ = crate::database::db::migrate(&pool).await;
+    let _ = database::db::migrate(&pool).await;
     let hashed = hash(password, DEFAULT_COST).unwrap();
 
     let existing = sqlx::query_scalar::<_, i64>("SELECT UserID FROM Users WHERE Nickname=?1")

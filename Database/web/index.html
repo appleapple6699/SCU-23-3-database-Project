@@ -5,56 +5,81 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Database Demo</title>
     <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css" />
   </head>
   <body>
-    <div class="container">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div id="status">未登录</div>
-        <button onclick="logout()">退出登录</button>
+    <div class="nav">
+      <div class="nav-inner">
+        <div class="brand">Database</div>
+        <div class="nav-links">
+          <a href="/">演示</a>
+          <a href="/admin.html">管理员</a>
+          <a href="/leader.html">组长</a>
+          <a href="/member.html">组员</a>
+          <a href="/auth.html">登录/注册</a>
+        </div>
+        <div class="nav-right">
+          <span id="status">未登录</span>
+          <button class="btn btn-outline" onclick="logout()">退出登录</button>
+        </div>
       </div>
-      <h1>Database 系统演示</h1>
-      <section>
-        <h2>注册</h2>
-        <input id="reg-nickname" placeholder="昵称" />
-        <input id="reg-phone" placeholder="手机号" />
-        <input id="reg-password" placeholder="密码" type="password" />
-        <button onclick="register()">注册</button>
-        <pre id="reg-result"></pre>
-      </section>
-      <section>
-        <h2>登录</h2>
-        <input id="login-phone" placeholder="手机号或UserID" />
-        <input id="login-password" placeholder="密码" type="password" />
-        <button onclick="login()">登录</button>
-        <pre id="login-result"></pre>
-      </section>
-      <section>
-        <h2>创建组</h2>
-        <input id="group-name" placeholder="组名" />
-        <input id="group-desc" placeholder="描述" />
-        <input id="group-creator" placeholder="创建者UserID" />
-        <button onclick="createGroup()">创建组</button>
-        <button onclick="listGroups()">查看组列表</button>
-        <pre id="group-result"></pre>
-      </section>
-      <section>
-        <h2>任务</h2>
-        <input id="task-group" placeholder="GroupID" />
-        <input id="task-pub" placeholder="PublisherID" />
-        <input id="task-title" placeholder="标题" />
-        <input id="task-content" placeholder="内容" />
-        <button onclick="createTask()">发布任务</button>
-        <button onclick="listTasks()">查看任务</button>
-        <pre id="task-result"></pre>
-      </section>
-      <section>
-        <h2>申请加入组</h2>
-        <input id="apply-user" placeholder="UserID" />
-        <input id="apply-group" placeholder="GroupID" />
-        <button onclick="applyUserGroup()">申请加入</button>
-        <pre id="apply-result"></pre>
-      </section>
     </div>
+    <div id="app" class="container">
+      <h1>Database 系统演示</h1>
+      
+      <el-card class="card">
+        <h2>创建组</h2>
+        <el-input v-model="group.name" placeholder="组名" />
+        <el-input v-model="group.description" placeholder="描述" />
+        <el-input v-model="group.creatorUserId" placeholder="创建者UserID" />
+        <el-button type="primary" @click="createGroup">创建组</el-button>
+        <el-button @click="listGroups">查看组列表</el-button>
+        <pre v-text="pretty(groupResult)"></pre>
+      </el-card>
+      <el-card class="card">
+        <h2>任务</h2>
+        <el-input v-model="task.groupId" placeholder="GroupID" />
+        <el-input v-model="task.publisherId" placeholder="PublisherID" />
+        <el-input v-model="task.title" placeholder="标题" />
+        <el-input v-model="task.content" placeholder="内容" />
+        <el-button type="primary" @click="createTask">发布任务</el-button>
+        <el-button @click="listTasks">查看任务</el-button>
+        <pre v-text="pretty(taskResult)"></pre>
+      </el-card>
+      <el-card class="card">
+        <h2>申请加入组</h2>
+        <el-input v-model="apply.userId" placeholder="UserID" />
+        <el-input v-model="apply.groupId" placeholder="GroupID" />
+        <el-button type="primary" @click="applyUserGroup">申请加入</el-button>
+        <pre v-text="pretty(applyResult)"></pre>
+      </el-card>
+    </div>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://unpkg.com/element-plus/dist/index.full.min.js"></script>
     <script src="/app.js"></script>
+    <script>
+      const { createApp } = Vue;
+      const app = createApp({
+        data(){
+          return {
+            
+            group: { name:'', description:'', creatorUserId:'' }, groupResult: null,
+            task: { groupId:'', publisherId:'', title:'', content:'' }, taskResult: null,
+            apply: { userId:'', groupId:'' }, applyResult: null,
+          };
+        },
+        methods: {
+          pretty(v){ return v ? JSON.stringify(v, null, 2) : ''; },
+          
+          async createGroup(){ this.groupResult = await api.request('/api/groups','POST',{ name:this.group.name, description:this.group.description, creatorUserId: parseInt(this.group.creatorUserId||'0',10) }); },
+          async listGroups(){ this.groupResult = await api.request('/api/groups'); },
+          async createTask(){ this.taskResult = await api.request('/api/tasks','POST',{ groupId:parseInt(this.task.groupId||'0',10), publisherId:parseInt(this.task.publisherId||'0',10), title:this.task.title, content:this.task.content }); },
+          async listTasks(){ this.taskResult = await api.request('/api/tasks'); },
+          async applyUserGroup(){ this.applyResult = await api.request('/api/usergroups/apply','POST',{ userId:parseInt(this.apply.userId||'0',10), groupId:parseInt(this.apply.groupId||'0',10) }); },
+        }
+      });
+      app.use(ElementPlus);
+      app.mount('#app');
+    </script>
   </body>
   </html>
